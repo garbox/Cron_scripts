@@ -1,1 +1,0 @@
-[19-Mar-2018 16:34:29 UTC] PHP Fatal error:  Cannot declare class Mandrill_Messages, because the name is already in use in /home/pmimd/public_html/onlinetraining/mandrill-api-php/src/Mandrill/Messages.php on line 3
