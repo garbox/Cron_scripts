@@ -1,18 +1,23 @@
+//This script runs every 24hrs at 8am CST.
+//The main function of this script is so connect to the database, look into the cart table and determine if there are any cart abandonments and send email with friendly email.
+
+//Note, this does not follow MVC framwork for cron_scripts dont seem to handle includes, or file imports very well. It tends to skip these types of php functions.
 <?php
 function Connect(){
             // Info to login to server
             $servername = "localhost";
-            $username = "pmimd_Master";
-            $password = "D~(8oTNkRzP9";
-            $dbname = "pmimd_prodcenter";
+            $username = "username";
+            $password = "password";
+            $dbname = "dbname";
 
             // Create and check connection
             $conn = new mysqli($servername, $username, $password, $dbname);
             return $conn;
         }
 
+//classes from Mandrill website
 class Mandrill {
-    
+
     public $apikey;
     public $ch;
     public $root = 'https://mandrillapp.com/api/1.0';
@@ -64,12 +69,12 @@ class Mandrill {
         curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($this->ch, CURLOPT_CONNECTTIMEOUT, 30);
         curl_setopt($this->ch, CURLOPT_TIMEOUT, 600);
-		// Added on 10/18/2016 to solve SSL issue. 
+		// Added on 10/18/2016 to solve SSL issue.
 		curl_setopt($this->ch, CURLOPT_SSL_VERIFYHOST, 0);
 		curl_setopt($this->ch, CURLOPT_SSL_VERIFYPEER, 0);
 
         $this->root = rtrim($this->root, '/') . '/';
-        
+
         $this->messages = new Mandrill_Messages($this);
     }
 
@@ -110,7 +115,7 @@ class Mandrill {
         }
         $result = json_decode($response_body, true);
         if($result === null) throw new Mandrill_Error('We were unable to decode the JSON response from the Mandrill API: ' . $response_body);
-        
+
         if(floor($info['http_code'] / 100) >= 4) {
             throw $this->castError($result);
         }
@@ -140,7 +145,6 @@ class Mandrill {
         if($this->debug) error_log($msg);
     }
 }
-
 class Mandrill_Messages {
     public function __construct(Mandrill $master) {
         $this->master = $master;
@@ -550,14 +554,14 @@ class Mandrill_Messages {
 
 function prod_display($email, $conn){
 
-        $select_query = "SELECT selfpaced.Name, selfpaced.Price 
-                        FROM cart 
+        $select_query = "SELECT selfpaced.Name, selfpaced.Price
+                        FROM cart
                         LEFT JOIN selfpaced ON cart.ProdID = selfpaced.ProdID
                         WHERE cart.Email ='".$email."'";
-    
+
         $result_display = $conn->query($select_query);
-        
-        // use onject to create html code for email. 
+
+        // use onject to create html code for email.
         while($display = $result_display->fetch_object()){
                 $prod_row .= "<tr>
                     <td valign='top' class='mcnTextContent' style='padding-top:0; padding-right:18px; padding-bottom:9px; padding-left:18px;'>".$display->Name."</td>
@@ -578,10 +582,9 @@ $result_email = $conn->query($select_email);
 
 while($data_email = $result_email->fetch_object()){
 
-    
     //Mandrill Send-Template API
 	try {
-		$mandrill = new Mandrill('CCJfQw9gdBtLU_gXZ2a9LQ'); 
+		$mandrill = new Mandrill('API KEY');
 		$template_name = 'cart-abandonment';
 		// content area, name = mcedit in main source code
 		// content  = whats going in that container.
@@ -589,23 +592,23 @@ while($data_email = $result_email->fetch_object()){
 			array(
 				'name' => 'prod_display',
 				'content' => prod_display($data_email->Email, $conn)
-			),	
+			),
             array(
 				'name' => 'button_link',
 				'content' => button_link($data_email->Email)
-			),										
+			),
 		);
 		$message = array(
 			'html' => '<p>Your Cart</p>',
 			'text' => 'Example text content',
-			'subject' => '[Notification] PMI online training order',
-			'from_email' => 'sroberts@pmimd.com',
-			'from_name' => 'pmiMD',
+			'subject' => 'subject',
+			'from_email' => 'from_email',
+			'from_name' => 'from_name',
 			'to' => array(
 				array(
-					'email' => $data_email->Email, //email address
+					'email' => "users_email", //email address
 					'type' => 'to'
-				),				
+				),
 			),
 			'important' => false,
 			'track_opens' => true,
@@ -616,7 +619,7 @@ while($data_email = $result_email->fetch_object()){
 			'url_strip_qs' => null,
 			'preserve_recipients' => null,
 			'view_content_link' => null,
-			'bcc_address' => 'marketing@pmimd.com', // bcc email address
+			'bcc_address' => null, // bcc email address
 			'tracking_domain' => null,
 			'signing_domain' => null,
 			'return_path_domain' => null,
@@ -640,13 +643,11 @@ while($data_email = $result_email->fetch_object()){
 		$ip_pool = 'Main Pool';
 		$send_at = '2015-01-01';
 		$result = $mandrill->messages->sendTemplate($template_name, $template_content, $message, $async, $ip_pool, $send_at);
-		
-	} 
+
+	}
 	catch(Mandrill_Error $e) {
 		echo 'A mandrill error occurred: ' . get_class($e) . ' - ' . $e->getMessage();
 		throw $e;
 	}
 }
 ?>
-
-
